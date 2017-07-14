@@ -225,8 +225,27 @@
 #   Default: $::fqdn
 #
 # [*client_custom*]
-#   Hash.  Custom client variables
+#   Hash.  Custom client variables.
 #   Default: {}
+#
+# [*client_deregister*]
+#   Boolean.  Enable the [deregistration
+#   event](https://sensuapp.org/docs/latest/reference/clients#deregistration-attributes)
+#   if true.
+#   Default: undef
+#
+# [*client_deregistration*]
+#   Hash.
+#   [Attributes](https://sensuapp.org/docs/latest/reference/clients#deregistration-attributes)
+#   used to generate check result data for the de-registration event. Client
+#   deregistration attributes are merged with some default check definition
+#   attributes by the Sensu server during client deregistration, so any valid
+#   check definition attributes – including custom check definition attributes
+#   – may be used as deregistration attributes, with the following exceptions
+#   (which are used to ensure the check result is valid): check name, output,
+#   status, and issued timestamp. The following attributes are provided as
+#   recommendations for controlling client deregistration behavior.
+#   Default: undef
 #
 # [*client_keepalive*]
 #   Hash.  Client keepalive config
@@ -391,6 +410,8 @@ class sensu (
   $client_address                 = $::ipaddress,
   $client_name                    = $::fqdn,
   $client_custom                  = {},
+  $client_deregister              = undef,
+  $client_deregistration          = undef,
   $client_keepalive               = {},
   $safe_mode                      = false,
   $plugins                        = [],
@@ -444,6 +465,21 @@ class sensu (
   validate_re($log_level, ['^debug$', '^info$', '^warn$', '^error$', '^fatal$'] )
   if !is_integer($redis_port) { fail('redis_port must be an integer') }
   if !is_integer($api_port) { fail('api_port must be an integer') }
+  if $api_ssl_port != undef and is_integer($api_ssl_port) == false {
+    fail('api_ssl_port must be an integer')
+  }
+  if $api_ssl_keystore_file != undef and is_string($api_ssl_keystore_file) == false {
+    fail('api_ssl_keystore_file must be a string')
+  }
+  if $api_ssl_keystore_password != undef and is_string($api_ssl_keystore_password) == false {
+    fail('api_ssl_keystore_password must be a string')
+  }
+  if $client_deregister != undef and !is_bool($client_deregister) {
+    fail('client_deregister must be a boolean or undef')
+  }
+  if $client_deregistration != undef and !is_hash($client_deregistration) {
+    fail('client_deregistration must be a hash or undef')
+  }
   if !is_integer($init_stop_max_wait) { fail('init_stop_max_wait must be an integer') }
   if $dashboard { fail('Sensu-dashboard is deprecated, use a dashboard module. See https://github.com/sensu/sensu-puppet#dashboards')}
   if $purge_config { fail('purge_config is deprecated, set the purge parameter to a hash containing `config => true` instead') }
