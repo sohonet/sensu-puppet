@@ -52,6 +52,7 @@ class sensu::client::service (
       ensure     => $ensure,
       enable     => $enable,
       hasrestart => $hasrestart,
+      provider   => $::init_system,
       subscribe  => [Class['sensu::package'], Class['sensu::client::config'], Class['sensu::rabbitmq::config'] ],
     }
   }
