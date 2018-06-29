@@ -48,7 +48,7 @@ class sensu::client::service (
 
     }
 
-    if $::osfamily == 'Debian' and ($::operatingsystemmajrelease + 0) >= 8 {
+    if $::operatingsystem == 'Debian' and ($::operatingsystemmajrelease + 0) >= 8 {
       service { 'sensu-client':
         ensure     => $ensure,
         enable     => $enable,

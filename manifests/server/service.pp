@@ -32,7 +32,7 @@ class sensu::server::service (
     }
 
     if $::osfamily != 'windows' {
-      if $::osfamily == 'Debian' and ($::operatingsystemmajrelease + 0) >= 8 {
+      if $::operatingsystem == 'Debian' and ($::operatingsystemmajrelease + 0) >= 8 {
         service { 'sensu-server':
           ensure     => $ensure,
           enable     => $enable,
