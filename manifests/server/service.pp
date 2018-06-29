@@ -32,11 +32,21 @@ class sensu::server::service (
     }
 
     if $::osfamily != 'windows' {
-      service { 'sensu-server':
-        ensure     => $ensure,
-        enable     => $enable,
-        hasrestart => $hasrestart,
-        subscribe  => [ Class['sensu::package'], Class['sensu::api::config'], Class['sensu::redis::config'], Class['sensu::rabbitmq::config'] ],
+      if $::osfamily == 'Debian' and ($::operatingsystemmajrelease + 0) >= 8 {
+        service { 'sensu-server':
+          ensure     => $ensure,
+          enable     => $enable,
+          hasrestart => $hasrestart,
+          provider   => 'systemd',
+          subscribe  => [ Class['sensu::package'], Class['sensu::api::config'], Class['sensu::redis::config'], Class['sensu::rabbitmq::config'] ],
+        }
+      } else {
+        service { 'sensu-server':
+          ensure     => $ensure,
+          enable     => $enable,
+          hasrestart => $hasrestart,
+          subscribe  => [ Class['sensu::package'], Class['sensu::api::config'], Class['sensu::redis::config'], Class['sensu::rabbitmq::config'] ],
+        }
       }
     }
   }

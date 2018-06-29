@@ -48,11 +48,21 @@ class sensu::client::service (
 
     }
 
-    service { 'sensu-client':
-      ensure     => $ensure,
-      enable     => $enable,
-      hasrestart => $hasrestart,
-      subscribe  => [Class['sensu::package'], Class['sensu::client::config'], Class['sensu::rabbitmq::config'] ],
+    if $::osfamily == 'Debian' and ($::operatingsystemmajrelease + 0) >= 8 {
+      service { 'sensu-client':
+        ensure     => $ensure,
+        enable     => $enable,
+        hasrestart => $hasrestart,
+        provider   => 'systemd',
+        subscribe  => [Class['sensu::package'], Class['sensu::client::config'], Class['sensu::rabbitmq::config'] ],
+      }
+    } else {
+      service { 'sensu-client':
+        ensure     => $ensure,
+        enable     => $enable,
+        hasrestart => $hasrestart,
+        subscribe  => [Class['sensu::package'], Class['sensu::client::config'], Class['sensu::rabbitmq::config'] ],
+      }
     }
   }
 }
