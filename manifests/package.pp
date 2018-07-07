@@ -13,14 +13,8 @@ class sensu::package {
     'Debian': {
       $pkg_title = 'sensu'
       $pkg_name = 'sensu'
-      # $pkg_version = $sensu::version
+      $pkg_version = $sensu::version
       $pkg_source = undef
-
-      $pkg_version = $::lsbdistcodename ? {
-        'stretch' => '1.0.3-1',
-        'jessie'  => '1.0.2-1',
-        default   => $sensu::version,
-      }
 
       if $sensu::manage_repo {
         class { '::sensu::repo::apt': }
