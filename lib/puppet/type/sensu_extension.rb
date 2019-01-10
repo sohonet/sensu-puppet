@@ -1,13 +1,16 @@
 Puppet::Type.newtype(:sensu_extension) do
-  @doc = ""
+  @doc = "Manages Sensu extensions"
 
   def initialize(*args)
     super *args
 
-    self[:notify] = [
-      "Service[sensu-api]",
-      "Service[sensu-server]",
-    ].select { |ref| catalog.resource(ref) }
+    if c = catalog
+      self[:notify] = [
+        'Service[sensu-api]',
+        'Service[sensu-server]',
+        'Service[sensu-enterprise]',
+      ].select { |ref| c.resource(ref) }
+    end
   end
 
   ensurable do

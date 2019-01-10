@@ -1,9 +1,12 @@
 require 'json' if Puppet.features.json?
 require File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..',
                                    'puppet_x', 'sensu', 'provider_create.rb'))
+require File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..',
+                                   'puppet_x', 'sensu', 'to_type.rb'))
 
 Puppet::Type.type(:sensu_enterprise_dashboard_config).provide(:json) do
   confine :feature => :json
+  include PuppetX::Sensu::ToType
   include PuppetX::Sensu::ProviderCreate
 
   # Internal: Retrieve the current contents of /etc/sensu/dashboard.json
@@ -119,6 +122,20 @@ Puppet::Type.type(:sensu_enterprise_dashboard_config).provide(:json) do
     conf['dashboard']['pass'] = value
   end
 
+  # Public: Retrieve the auth hash for the dashboard
+  #
+  # Returns the auth config
+  def auth
+    conf['dashboard']['auth']
+  end
+
+  # Public: Set the auth config
+  #
+  # Returns nothing.
+  def auth=(value)
+    conf['dashboard']['auth'] = value.to_hash
+  end
+
   # Public: Set the ssl listener config
   #
   # Returns nothing.
@@ -187,5 +204,33 @@ Puppet::Type.type(:sensu_enterprise_dashboard_config).provide(:json) do
   # Returns nothing.
   def ldap=(value)
     conf['dashboard']['ldap'] = value.to_hash
+  end
+
+  # Public: Retrieve the OIDC config
+  #
+  # Returns the OIDC auth config
+  def oidc
+    conf['dashboard']['oidc']
+  end
+
+  # Public: Set the OIDC config hash
+  #
+  # Returns nothing.
+  def oidc=(value)
+    conf['dashboard']['oidc'] = value.to_hash
+  end
+
+  def is_property?(prop)
+    properties = self.class.resource_type.validproperties
+    properties.map(&:to_s).include? prop
+  end
+
+  def custom
+    conf['dashboard'].reject { |k,v| is_property?(k) }
+  end
+
+  def custom=(value)
+    conf['dashboard'].delete_if { |k,v| not is_property?(k) }
+    conf['dashboard'].merge!(to_type(value))
   end
 end

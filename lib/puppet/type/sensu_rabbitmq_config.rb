@@ -3,17 +3,19 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', '..',
                                    'puppet_x', 'sensu', 'boolean_property.rb'))
 
 Puppet::Type.newtype(:sensu_rabbitmq_config) do
-  @doc = ''
+  @doc = 'Manages Sensu RabbitMQ config'
 
   def initialize(*args)
     super(*args)
 
-    self[:notify] = [
-      'Service[sensu-server]',
-      'Service[sensu-client]',
-      'Service[sensu-api]',
-      'Service[sensu-enterprise]'
-    ].select { |ref| catalog.resource(ref) }
+    if c = catalog
+      self[:notify] = [
+        'Service[sensu-server]',
+        'Service[sensu-client]',
+        'Service[sensu-api]',
+        'Service[sensu-enterprise]',
+      ].select { |ref| c.resource(ref) }
+    end
   end
 
   def has_cluster?
@@ -104,16 +106,6 @@ Puppet::Type.newtype(:sensu_rabbitmq_config) do
   newproperty(:heartbeat) do
     desc "The RabbitMQ heartbeat value"
     defaultto {30 unless @resource.has_cluster? }
-    
-    def insync?(is)
-      return should == is if should.is_a?(Symbol)
-      super(is)
-    end
-  end
-
-  newproperty(:reconnect_on_error) do
-    desc 'Attempt to reconnect to RabbitMQ on error'
-    defaultto { :false unless @resource.has_cluster? }
 
     def insync?(is)
       return should == is if should.is_a?(Symbol)

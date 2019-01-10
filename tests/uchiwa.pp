@@ -34,5 +34,9 @@ file { '/etc/sensu/uchiwa.json':
 
 service { 'uchiwa':
   ensure  => running,
-  require => [ File['/etc/sensu/uchiwa.json'],Package['uchiwa'] ],
+  enable  => true,
+  require => [
+    File['/etc/sensu/uchiwa.json'],
+    Package['uchiwa'],
+  ],
 }

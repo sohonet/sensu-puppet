@@ -4,7 +4,7 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', '..',
                                    'puppet_x', 'sensu', 'to_type.rb'))
 
 Puppet::Type.newtype(:sensu_check) do
-  @doc = ""
+  @doc = "Manages Sensu checks"
 
   class SensuCheckArrayProperty < Puppet::Property
 
@@ -21,10 +21,14 @@ Puppet::Type.newtype(:sensu_check) do
   def initialize(*args)
     super *args
 
-    self[:notify] = [
-      "Service[sensu-client]",
-      "Service[sensu-server]",
-    ].select { |ref| catalog.resource(ref) }
+    if c = catalog
+      self[:notify] = [
+        "Service[sensu-client]",
+        "Service[sensu-server]",
+        "Service[sensu-enterprise]",
+        "Service[sensu-api]",
+      ].select { |ref| c.resource(ref) }
+    end
   end
 
   ensurable do
@@ -66,12 +70,28 @@ Puppet::Type.newtype(:sensu_check) do
     end
   end
 
+  newproperty(:contacts, :array_matching => :all, :parent => SensuCheckArrayProperty) do
+    desc "Contact names to override handler configuration via Contact Routing"
+    # Valid names documented at
+    # https://sensuapp.org/docs/0.29/enterprise/contact-routing.html#contact-names
+    newvalues(/^[\w\.-]+$/, :absent)
+    def insync?(is)
+      return is.sort == should.sort if is.is_a?(Array) && should.is_a?(Array)
+      is == should
+    end
+  end
+
   newproperty(:high_flap_threshold) do
     desc "A host is determined to be flapping when the percent change exceedes this threshold."
     newvalues(/.*/, :absent)
     munge do |value|
       value.to_s == 'absent' ? :absent : value.to_i
     end
+  end
+
+  newproperty(:cron) do
+    desc 'When the check should be executed, using the Cron syntax.'
+    newvalues(/.*/, :absent)
   end
 
   newproperty(:interval) do
@@ -212,11 +232,29 @@ Puppet::Type.newtype(:sensu_check) do
     newvalues(/.*/, :absent)
   end
 
+  newproperty(:proxy_requests) do
+    desc "Proxy Requests"
+    newvalues(/.*/, :absent)
+  end
+
   newproperty(:ttl) do
     desc "Check ttl in seconds"
     newvalues(/.*/, :absent)
     munge do |value|
       value.to_s == 'absent' ? :absent : value.to_i
+    end
+  end
+
+  newproperty(:ttl_status) do
+    desc "Exit code for ttl"
+    newvalues(/.*/, :absent)
+    munge do |value|
+      value.to_s == 'absent' ? :absent : value.to_i
+    end
+    validate do |value|
+      unless value.to_s =~ /^\d+$/ || value.to_s == 'absent'
+        raise ArgumentError, "#{value} is not a valid ttl_status, must be numeric value"
+      end
     end
   end
 

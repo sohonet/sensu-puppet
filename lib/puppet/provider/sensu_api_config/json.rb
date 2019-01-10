@@ -13,9 +13,15 @@ Puppet::Type.type(:sensu_api_config).provide(:json) do
   def conf
     begin
       @conf ||= JSON.parse(File.read(config_file))
+      # (#784) Filter out ssl_port, ssl_keystore_file, and ssl_keystore_password
+      if @conf['api'].is_a?(Hash)
+        exclude_keys = %w(ssl_port ssl_keystore_file ssl_keystore_password)
+        @conf['api'].delete_if { |k,_| exclude_keys.include?(k) }
+      end
     rescue
       @conf ||= {}
     end
+    return @conf
   end
 
   # Public: Save changes to the API section of /etc/sensu/config.json to disk.
@@ -122,4 +128,65 @@ Puppet::Type.type(:sensu_api_config).provide(:json) do
     conf['api']['password'] = value
   end
 
+  # Public: Retrieve the HTTPS (SSL) port number that the API is configured to
+  # listen on. Enterprise only feature.
+  #
+  # Returns the String port number.
+  def ssl_port
+    if conf['api']['ssl'].is_a? Hash
+      conf['api']['ssl']['port']
+    end
+  end
+
+  # Public: Set the HTTPS (SSL) port that the API should listen on. Enterprise
+  # only feature.
+  #
+  # Returns nothing.
+  def ssl_port=(value)
+    if not conf['api']['ssl'].is_a? Hash
+      conf['api']['ssl'] = {}
+    end
+    conf['api']['ssl']['port'] = value.to_i
+  end
+
+  # Public: Retrieve the file path for the SSL certificate keystore. Enterprise
+  # only feature.
+  #
+  # Returns the String password.
+  def ssl_keystore_file
+    if conf['api']['ssl'].is_a? Hash
+      conf['api']['ssl']['keystore_file']
+    end
+  end
+
+  # Public: Set the file path for the SSL certificate keystore. Enterprise only
+  # feature.
+  #
+  # Returns nothing.
+  def ssl_keystore_file=(value)
+    if not conf['api']['ssl'].is_a? Hash
+      conf['api']['ssl'] = {}
+    end
+    conf['api']['ssl']['keystore_file'] = value
+  end
+
+  # Public: Retrieve the SSL certificate keystore password. Enterprise only
+  # feature.
+  #
+  # Returns the String password.
+  def ssl_keystore_password
+    if conf['api']['ssl'].is_a? Hash
+      conf['api']['ssl']['keystore_password']
+    end
+  end
+
+  # Public: Set the SSL certificate keystore password. Enterprise only feature.
+  #
+  # Returns nothing.
+  def ssl_keystore_password=(value)
+    if not conf['api']['ssl'].is_a? Hash
+      conf['api']['ssl'] = {}
+    end
+    conf['api']['ssl']['keystore_password'] = value
+  end
 end

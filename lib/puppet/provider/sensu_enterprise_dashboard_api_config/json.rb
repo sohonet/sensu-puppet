@@ -15,11 +15,9 @@ Puppet::Type.type(:sensu_enterprise_dashboard_api_config).provide(:json) do
   # Returns a Hash representation of the JSON structure in
   # /etc/sensu/dashboard.json or an empty Hash if the file can not be read.
   def conf
-    begin
-      @conf ||= JSON.parse(File.read(config_file))
-    rescue
-      @conf ||= {}
-    end
+    @conf ||= JSON.parse(File.read(config_file))
+  rescue
+    @conf ||= {}
   end
 
   # Internal: Retrieve the sensu config block from conf
@@ -31,8 +29,8 @@ Puppet::Type.type(:sensu_enterprise_dashboard_api_config).provide(:json) do
   end
 
   # Internal: Returns the name of the resource
-  def name
-    resource[:name]
+  def host
+    resource[:host]
   end
 
   # Internal: Returns the API endpoint config Hash
@@ -40,7 +38,7 @@ Puppet::Type.type(:sensu_enterprise_dashboard_api_config).provide(:json) do
   # Returns an empty Hash if the config block doesn't exist yet
   def api
     return @api if @api
-    api_hash = sensu.find { |endpoint| endpoint['name'] == name }
+    api_hash = sensu.find { |endpoint| endpoint['host'] == host }
     @api = api_hash ? api_hash : {}
   end
 
@@ -57,14 +55,14 @@ Puppet::Type.type(:sensu_enterprise_dashboard_api_config).provide(:json) do
 
   def pre_create
     conf['sensu'] ||= []
-    sensu << { 'name' => name } unless sensu.find{|e| e['name'] == name}
+    sensu << { 'host' => host } unless sensu.find{|e| e['host'] == host}
   end
 
   # Public: Remove the API configuration section.
   #
   # Returns nothing.
   def destroy
-    sensu.reject! { |api| api['name'] == name }
+    sensu.reject! { |api| api['host'] == host }
   end
 
   # Public: Determine if the specified API endpoint configuration section is present.
@@ -72,23 +70,23 @@ Puppet::Type.type(:sensu_enterprise_dashboard_api_config).provide(:json) do
   # Returns a Boolean, true if present, false if absent.
   def exists?
     sensu.inject(false) do |memo, api|
-      memo = true if api['name'] == name
+      memo = true if api['host'] == host
       memo
     end
   end
 
-  # Public: Retrieve the host name of the specified API endpoint
+  # Public: Retrieve the name of the specified API endpoint
   #
-  # Returns the String host
-  def host
-    api['host']
+  # Returns the String name
+  def datacenter
+    api['name']
   end
 
-  # Public: Set the host name of the specified API endpoint
+  # Public: Set the name of the specified API endpoint
   #
   # Returns nothing.
-  def host=(value)
-    api['host'] = value
+  def datacenter=(value)
+    api['name'] = value
   end
 
   # Public: Retrieve the port number that the API is configured to listen on.
@@ -119,7 +117,7 @@ Puppet::Type.type(:sensu_enterprise_dashboard_api_config).provide(:json) do
     api['ssl'] = value
   end
 
-  # Public: Retrieve the Boolean value which determines whether to accept 
+  # Public: Retrieve the Boolean value which determines whether to accept
   # an insecure SSL certificate
   #
   # Returns the Boolean insecure.
@@ -188,5 +186,90 @@ Puppet::Type.type(:sensu_enterprise_dashboard_api_config).provide(:json) do
   # Returns nothing.
   def pass=(value)
     api['pass'] = value
+  end
+
+  # Public: Load a configuration file.
+  #
+  # @param [Hash] opts
+  # @option opts [String] :config_file The dashboard configuration file to
+  #   load.  May be specified in the environment as SENSU_DASHBOARD_JSON to
+  #   affect the behavior of `puppet resource`.  Defaults to
+  #   `"/etc/sensu/dashboard.json"`
+  #
+  # @return [Hash] the JSON object loaded from the file, e.g.:
+  # {
+  #   "sensu": [
+  #     {
+  #       "host": "sensu.example.com",
+  #       "name": "example-dc",
+  #       "port": 4567,
+  #       "ssl": false,
+  #       "insecure": false,
+  #       "timeout": 5
+  #     },
+  #     {
+  #       "host": "sensu2.example.com",
+  #       "name": "example-dc",
+  #       "port": 4567,
+  #       "ssl": false,
+  #       "insecure": false,
+  #       "timeout": 5
+  #     }
+  #   ],
+  #   "dashboard": {
+  #     "host": "0.0.0.0",
+  #     "port": 3000,
+  #     "interval": 5,
+  #     "refresh": 5
+  #   }
+  # }
+  def self.load_config(opts = {})
+    if opts[:config_file]
+      fp = opts[:config_file]
+    elsif not ENV['SENSU_DASHBOARD_JSON'].to_s.empty?
+      fp = ENV['SENSU_DASHBOARD_JSON']
+    else
+      fp = '/etc/sensu/dashboard.json'
+    end
+
+    begin
+      Puppet.debug "Loading: #{fp}"
+      return JSON.parse(File.read(fp))
+    rescue StandardError => e
+      Puppet.warning "Could not load #{fp} #{e.message}"
+      Puppet.warning "Using an empty config hash instead."
+      return {}
+    end
+  end
+
+  # Given a config, map it to provider hashes.  Intended to take the output of
+  # config_file and convert it to an array of hashes suitable for initializing
+  # provider instances.
+  #
+  # @return Array[Hash]
+  def self.config_to_provider_hashes(config)
+    return [] unless config['sensu']
+    config['sensu'].map do |hsh|
+      hsh.inject({}) do |m, (k,v)|
+        case k
+        when 'host'
+          m[:name] = v
+        when 'name'
+          m[:datacenter] = v
+        else
+          m[k.to_sym] = v
+        end
+        m
+      end.merge(ensure: 'present', provider: 'json')
+    end
+  end
+
+  # Public: enumerate all resources, managed and unmanaged
+  #
+  # @return Array[Provider Instances]
+  def self.instances
+    config_to_provider_hashes(load_config).map do |provider_hash|
+      new(provider_hash)
+    end
   end
 end

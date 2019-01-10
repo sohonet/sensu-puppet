@@ -1,14 +1,18 @@
-require 'puppet/parameter/boolean'
+require File.expand_path(File.join(File.dirname(__FILE__), '..', '..',
+                                   'puppet_x', 'sensu', 'boolean_property.rb'))
 
 Puppet::Type.newtype(:sensu_enterprise_dashboard_api_config) do
-  @doc = ""
+  @doc = "Manages Sensu Enterprise Dashboard API config"
 
   def initialize(*args)
     super *args
-
-    self[:notify] = [
-      "Service[sensu-enterprise-dashboard]",
-    ].select { |ref| catalog.resource(ref) }
+    # N.B. catalog will return `nil` when running in the context of `puppet
+    # resource`.  We must take care not to call methods on a nil object.
+    if c = catalog
+      # Notify the service if it exists in the catalog.
+      id = 'Service[sensu-enterprise-dashboard]'
+      self[:notify] = [c.resource(id)].compact
+    end
   end
 
   ensurable do
@@ -23,8 +27,10 @@ Puppet::Type.newtype(:sensu_enterprise_dashboard_api_config) do
     defaultto :present
   end
 
-  newparam(:name) do
-    desc "The name of the Sensu API (used elsewhere as the datacenter name)."
+  newparam(:host) do
+    desc "The hostname or IP address of the Sensu API."
+
+    isnamevar
   end
 
   newparam(:base_path) do
@@ -32,9 +38,8 @@ Puppet::Type.newtype(:sensu_enterprise_dashboard_api_config) do
     defaultto '/etc/sensu/'
   end
 
-  newproperty(:host) do
-    desc "The hostname or IP address of the Sensu API."
-    isrequired
+  newproperty(:datacenter) do
+    desc "The name of the Sensu API (used elsewhere as the datacenter name)."
   end
 
   newproperty(:port) do
@@ -45,16 +50,16 @@ Puppet::Type.newtype(:sensu_enterprise_dashboard_api_config) do
     defaultto '4567'
   end
 
-  newproperty(:ssl, :boolean => true, :parent => Puppet::Parameter::Boolean) do
+  newproperty(:ssl, :parent => PuppetX::Sensu::BooleanProperty) do
     desc "Determines whether or not to use the HTTPS protocol."
 
-    defaultto false
+    defaultto :false
   end
 
-  newproperty(:insecure, :boolean => true, :parent => Puppet::Parameter::Boolean) do
+  newproperty(:insecure, :parent => PuppetX::Sensu::BooleanProperty) do
     desc "Determines whether or not to accept an insecure SSL certificate."
 
-    defaultto false
+    defaultto :false
   end
 
   newproperty(:path) do

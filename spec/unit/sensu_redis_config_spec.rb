@@ -24,8 +24,8 @@ describe Puppet::Type.type(:sensu_redis_config) do
   end
 
   describe 'reconnect_on_error property' do
-    it 'defaults to false' do
-      expect(type_instance[:reconnect_on_error]).to be :false
+    it 'defaults to true' do
+      expect(type_instance[:reconnect_on_error]).to be :true
     end
 
     [true, :true, 'true', 'True', :yes, 'yes'].each do |v|
@@ -48,6 +48,42 @@ describe Puppet::Type.type(:sensu_redis_config) do
       }.to raise_error Puppet::Error, /expected a boolean value/
     end
 
+  end
+
+  describe "tls" do
+    context "with defaults (no tls)" do
+      it { expect(type_instance.parameter(:tls).value).to eq(:false) }
+    end
+
+    [true, 'true'].each do |v|
+      context "should set tls to #{v}" do
+        let :inst do
+          create_type_instance(resource_hash.merge({:tls => v}))
+        end
+
+        it { expect(inst.parameter(:tls).value).to eq(:true) }
+      end
+    end
+
+    [false, 'false'].each do |v|
+      context "should set tls to #{v}" do
+        let :inst do
+          create_type_instance(resource_hash.merge({:tls => v}))
+        end
+
+        it { expect(inst.parameter(:tls).value).to eq(:false) }
+      end
+    end
+
+    context 'invalid value' do
+      let :inst do
+        create_type_instance(resource_hash.merge({:tls => 'foo'}))
+      end
+
+      it 'should raise an error' do
+        expect { inst }.to raise_error(Puppet::ResourceError, /Invalid value "foo". Valid values are true, false/)
+      end
+    end
   end
 
   describe "sentinels" do
@@ -180,4 +216,25 @@ describe Puppet::Type.type(:sensu_redis_config) do
     end
   end
 
+  describe 'notifications' do
+    context 'when managing sensu-enterprise (#495)' do
+      let(:service_resource) do
+        Puppet::Type.type(:service).new(name: 'sensu-enterprise')
+      end
+      let(:resource_hash) do
+        c = Puppet::Resource::Catalog.new
+        c.add_resource(service_resource)
+        {
+          :title => 'foo.example.com',
+          :catalog => c
+        }
+      end
+
+      it 'notifies Service[sensu-enterprise]' do
+        notify_list = described_class.new(resource_hash)[:notify]
+        # compare the resource reference strings, the object identities differ.
+        expect(notify_list.map(&:ref)).to eq [service_resource.ref]
+      end
+    end
+  end
 end
