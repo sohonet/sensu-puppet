@@ -3,15 +3,18 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', '..',
                                    'puppet_x', 'sensu', 'boolean_property.rb'))
 
 Puppet::Type.newtype(:sensu_redis_config) do
-  @doc = ""
+  @doc = "Manages Sensu Redis config"
 
   def initialize(*args)
     super *args
 
-    self[:notify] = [
-      "Service[sensu-api]",
-      "Service[sensu-server]",
-    ].select { |ref| catalog.resource(ref) }
+    if c = catalog
+      self[:notify] = [
+        'Service[sensu-api]',
+        'Service[sensu-server]',
+        'Service[sensu-enterprise]',
+      ].select { |ref| c.resource(ref) }
+    end
   end
 
   def has_sentinels?
@@ -81,8 +84,7 @@ Puppet::Type.newtype(:sensu_redis_config) do
 
   newproperty(:reconnect_on_error, :parent => PuppetX::Sensu::BooleanProperty) do
     desc "Attempt to reconnect to RabbitMQ on error"
-
-    defaultto :false
+    defaultto :true
   end
 
   newproperty(:db) do
@@ -97,6 +99,12 @@ Puppet::Type.newtype(:sensu_redis_config) do
     defaultto :true
   end
 
+  newproperty(:tls, :boolean => true) do
+    desc "Use TLS encryption to connect to Redis"
+    newvalues(:true, :false)
+    defaultto :false
+  end
+
   newproperty(:sentinels, :array_matching => :all) do
     desc "Redis Sentinel configuration for HA clustering"
     defaultto []
@@ -108,9 +116,8 @@ Puppet::Type.newtype(:sensu_redis_config) do
     end
 
     munge do |value|
-      Hash[value.map do |k, v|
-        [k, if k == "port" then v.to_i else v.to_s end]
-      end]
+      hsh_ary = value.map {|k,v| [k, k == "port" ? v.to_i : v.to_s] }
+      Hash[hsh_ary]
     end
   end
 

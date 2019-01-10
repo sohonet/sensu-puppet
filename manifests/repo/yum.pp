@@ -1,20 +1,20 @@
-# = Class: sensu::repo::yum
+# @summary Adds the Sensu YUM repo support
 #
 # Adds the Sensu YUM repo support
 #
 class sensu::repo::yum {
 
-  if $caller_module_name != $module_name {
-    fail("Use of private class ${name} by ${caller_module_name}")
-  }
-
-  if $sensu::install_repo  {
-    if $sensu::repo_source {
-      $url = $sensu::repo_source
+  if $::sensu::install_repo  {
+    if $::sensu::repo_source {
+      $url = $::sensu::repo_source
     } else {
-      $url = $sensu::repo ? {
-        'unstable'  => "http://repositories.sensuapp.org/yum-unstable/\$releasever/\$basearch/",
-        default     => "http://repositories.sensuapp.org/yum/\$releasever/\$basearch/"
+      $releasever = $::operatingsystem ? {
+        'Amazon' => '6',
+        default  => '$releasever',
+      }
+      $url = $::sensu::repo ? {
+        'unstable'  => "https://sensu.global.ssl.fastly.net/yum-unstable/${releasever}/\$basearch/",
+        default     => "https://sensu.global.ssl.fastly.net/yum/${releasever}/\$basearch/"
       }
     }
 
@@ -24,12 +24,12 @@ class sensu::repo::yum {
       gpgcheck => 0,
       name     => 'sensu',
       descr    => 'sensu',
-      before   => Package['sensu'],
+      before   => Package[$sensu::package::pkg_title],
     }
 
     # prep for Enterprise repos
-    $se_user = $sensu::enterprise_user
-    $se_pass = $sensu::enterprise_pass
+    $se_user = $::sensu::enterprise_user
+    $se_pass = $::sensu::enterprise_pass
 
     if $::sensu::enterprise {
       $se_url  = "http://${se_user}:${se_pass}@enterprise.sensuapp.com/yum/noarch/"
@@ -57,5 +57,4 @@ class sensu::repo::yum {
       }
     }
   }
-
 }

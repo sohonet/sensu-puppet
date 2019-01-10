@@ -2,7 +2,7 @@ require File.expand_path(File.join(File.dirname(__FILE__), '..', '..',
                                    'puppet_x', 'sensu', 'to_type.rb'))
 
 Puppet::Type.newtype(:sensu_client_subscription) do
-  @doc = ""
+  @doc = "Manages Sensu client subscriptions"
 
   def initialize(*args)
     super *args
@@ -32,6 +32,11 @@ Puppet::Type.newtype(:sensu_client_subscription) do
   newparam(:base_path) do
     desc "The base path to the client config file"
     defaultto '/etc/sensu/conf.d/'
+  end
+
+  newparam(:file_name) do
+    desc "The name of the client config file"
+    defaultto { "subscription_" + resource.name + ".json" }
   end
 
   newproperty(:subscriptions, :array_matching => :all) do

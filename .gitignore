@@ -12,7 +12,8 @@ spec/reports
 test/tmp
 test/version_tmp
 tmp
-Gemfile.lock
+/Gemfile.lock
+/Gemfile.local
 
 # YARD artifacts
 .yardoc
@@ -41,6 +42,11 @@ spec/fixtures/modules/*
 # Sensu
 junit/
 log/
+*.log
 vendor/
 sensu.komodoproject
 doc/**
+
+# direnv & rbenv
+/.envrc
+/.ruby-version

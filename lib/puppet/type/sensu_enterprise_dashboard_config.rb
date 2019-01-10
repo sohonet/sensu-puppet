@@ -1,5 +1,5 @@
 Puppet::Type.newtype(:sensu_enterprise_dashboard_config) do
-  @doc = ""
+  @doc = "Manages Sensu Enterprise Dashboard config"
 
   def initialize(*args)
     super *args
@@ -56,6 +56,16 @@ Puppet::Type.newtype(:sensu_enterprise_dashboard_config) do
     desc "A password to enable simple authentication and restrict access to the dashboard. Leave blank along with user to disable simple authentication."
   end
 
+  newproperty(:auth) do
+    desc "The auth definition scope, used to configure JSON Web Token (JWT) authentication signatures."
+
+    validate do |value|
+      unless value.respond_to?(:to_hash)
+        raise ArgumentError, "Sensu Enterprise Dashboard auth config must be a Hash"
+      end
+    end
+  end
+
   newproperty(:ssl) do
     desc "A hash of SSL attributes to enable native SSL"
 
@@ -104,6 +114,43 @@ Puppet::Type.newtype(:sensu_enterprise_dashboard_config) do
         raise ArgumentError, "Sensu Enterprise Dashboard LDAP config must be a Hash"
       end
     end
+  end
+
+  newproperty(:oidc) do
+    desc "The oidc definition scope, used to configure Role Based Access Controls with the RBAC for OpenID Connect (OIDC) driver. Overrides simple authentication."
+
+    validate do |value|
+      unless value.respond_to?(:to_hash)
+        raise ArgumentError, "Sensu Enterprise Dashboard OIDC config must be a Hash"
+      end
+    end
+  end
+
+  newproperty(:custom) do
+    desc "Custom config variables"
+    include PuppetX::Sensu::ToType
+
+    def is_to_s(hash = @is)
+      hash.keys.sort.map {|key| "#{key} => #{hash[key]}"}.join(", ")
+    end
+
+    def should_to_s(hash = @should)
+      hash.keys.sort.map {|key| "#{key} => #{hash[key]}"}.join(", ")
+    end
+
+    def insync?(is)
+      if defined? @should[0]
+        if is == @should[0].each { |k, v| value[k] = to_type(v) }
+          true
+        else
+          false
+        end
+      else
+        true
+      end
+    end
+
+    defaultto {}
   end
 
   autorequire(:package) do

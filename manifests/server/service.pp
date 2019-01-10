@@ -1,29 +1,21 @@
-# = Class: sensu::server::service
+# @summary Manages the Sensu server service
 #
 # Manages the Sensu server service
 #
-# == Parameters
+# @param hasrestart Value of hasrestart attribute for this service.
 #
-# [*hasrestart*]
-#   Boolean. Value of hasrestart attribute for this service.
-#   Default: true
-
 class sensu::server::service (
-  $hasrestart = true,
+  Boolean $hasrestart    = $::sensu::hasrestart,
+  $server_service_enable = $::sensu::server_service_enable,
+  $server_service_ensure = $::sensu::server_service_ensure,
 ) {
 
-  validate_bool($hasrestart)
+  if $::sensu::manage_services {
 
-  if $caller_module_name != $module_name {
-    fail("Use of private class ${name} by ${caller_module_name}")
-  }
-
-  if $sensu::manage_services {
-
-    case $sensu::server {
+    case $::sensu::server {
       true: {
-        $ensure = 'running'
-        $enable = true
+        $ensure = $server_service_ensure
+        $enable = $server_service_enable
       }
       default: {
         $ensure = 'stopped'
@@ -31,12 +23,18 @@ class sensu::server::service (
       }
     }
 
-    if $::osfamily != 'windows' {
+    # The server is only supported on Linux
+    if $::kernel == 'Linux' {
       service { 'sensu-server':
         ensure     => $ensure,
         enable     => $enable,
         hasrestart => $hasrestart,
-        subscribe  => [ Class['sensu::package'], Class['sensu::api::config'], Class['sensu::redis::config'], Class['sensu::rabbitmq::config'] ],
+        subscribe  => [
+          Class['sensu::package'],
+          Sensu_api_config[$::fqdn],
+          Class['sensu::redis::config'],
+          Class['sensu::rabbitmq::config'],
+        ],
       }
     }
   }
